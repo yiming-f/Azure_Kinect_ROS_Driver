@@ -37,12 +37,12 @@
              The colour and depth images are processed via 'rgbd_launch' and point clouds are generated via
              'image_proc' using the manual camera calibration. -->
   <arg name="depth_enabled"               default="true" />           <!-- Enable or disable the depth camera -->
-  <arg name="depth_mode"                  default="WFOV_2X2BINNED" />  <!-- Set the depth camera mode, which affects FOV, depth range, and camera resolution. See Azure Kinect documentation for full details. Valid options: NFOV_UNBINNED, NFOV_2X2BINNED, WFOV_UNBINNED, WFOV_2X2BINNED, and PASSIVE_IR -->
+  <arg name="depth_mode"                  default="NFOV_UNBINNED" />  <!-- Set the depth camera mode, which affects FOV, depth range, and camera resolution. See Azure Kinect documentation for full details. Valid options: NFOV_UNBINNED, NFOV_2X2BINNED, WFOV_UNBINNED, WFOV_2X2BINNED, and PASSIVE_IR -->
   <arg name="depth_unit"                  default="16UC1" />          <!-- Depth distance units. Options are: "32FC1" (32 bit float metre) or "16UC1" (16 bit integer millimetre) -->
   <arg name="color_enabled"               default="true" />           <!-- Enable or disable the color camera -->
   <arg name="color_format"                default="bgra" />           <!-- The format of RGB camera. Valid options: bgra, jpeg -->
-  <arg name="color_resolution"            default="1536P" />          <!-- Resolution at which to run the color camera. Valid options: 720P, 1080P, 1440P, 1536P, 2160P, 3072P -->
-  <arg name="fps"                         default="30" />              <!-- FPS to run both cameras at. Valid options are 5, 15, and 30 -->
+  <arg name="color_resolution"            default="720P" />          <!-- Resolution at which to run the color camera. Valid options: 720P, 1080P, 1440P, 1536P, 2160P, 3072P -->
+  <arg name="fps"                         default="5" />              <!-- FPS to run both cameras at. Valid options are 5, 15, and 30 -->
   <arg name="point_cloud"                 default="false" />          <!-- Generate a point cloud from depth data. Requires depth_enabled -->
   <arg name="rgb_point_cloud"             default="false" />          <!-- Colorize the point cloud using the RBG camera. Requires color_enabled and depth_enabled -->
   <arg name="point_cloud_in_depth_frame"  default="false" />          <!-- Whether the RGB pointcloud is rendered in the depth frame (true) or RGB frame (false). Will either match the resolution of the depth camera (true) or the RGB camera (false). -->
@@ -51,7 +51,7 @@
   <arg name="recording_file"              default="" />               <!-- Absolute path to a mkv recording file which will be used with the playback api instead of opening a device -->
   <arg name="recording_loop_enabled"      default="false" />          <!-- If set to true the recording file will rewind the beginning once end of file is reached -->
   <arg name="calibration_url"             default="" />               <!-- Load intrinsic calibration from specific URL (default: "file://$HOME/.ros/camera_info/"") -->
-  <arg name="rescale_ir_to_mono8"         default="false" />           <!-- Whether to rescale the IR image to an 8-bit monochrome image for visualization and further processing. A scaling factor (ir_mono8_scaling_factor) is applied. -->
+  <arg name="rescale_ir_to_mono8"         default="true" />           <!-- Whether to rescale the IR image to an 8-bit monochrome image for visualization and further processing. A scaling factor (ir_mono8_scaling_factor) is applied. -->
   <arg name="ir_mono8_scaling_factor"     default="1.0" />            <!-- Scaling factor to apply when converting IR to mono8 (see rescale_ir_to_mono8). If using illumination, use the value 0.5-1. If using passive IR, use 10. -->
   <arg name="imu_rate_target"             default="0"/>               <!-- Desired output rate of IMU messages. Set to 0 (default) for full rate (1.6 kHz). -->
   <arg name="wired_sync_mode"             default="0"/>               <!-- Wired sync mode. 0: OFF, 1: MASTER, 2: SUBORDINATE. -->
@@ -70,7 +70,7 @@
   <arg name="hw_registered_processing"        default="false" unless="$(arg depth_registration)" />
   <arg name="sw_registered_processing"        default="true" unless="$(arg depth_registration)" />
 
-  <group>
+  <group ns="cam1">
 
     <!-- Start nodelet manager -->
     <arg name="manager" value="$(arg camera)_nodelet_manager" />
@@ -83,6 +83,7 @@
     <node pkg="nodelet" type="nodelet" name="k4a_ros_bridge"
           args="load Azure_Kinect_ROS_Driver/K4AROSBridgeNodelet $(arg manager) --no-bond"
           respawn="true">
+      <param name="sensor_sn"         type="string" value="000950795012" />     
       <param name="depth_enabled"                 value="$(arg depth_enabled)" />
       <param name="depth_mode"                    value="$(arg depth_mode)" />
       <param name="depth_unit"                    value="$(arg depth_unit)" />
@@ -128,4 +129,5 @@
     </include>
 
   </group>
+
 </launch>
