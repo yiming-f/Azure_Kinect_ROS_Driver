@@ -25,6 +25,8 @@ Licensed under the MIT License.
     </node>
   </group>
 
+  <node pkg="tf" type="static_transform_publisher" name="camera_to_robot_tf" args="0 0 0 -1.570796 0 -1.570796 map rgb_camera_link 100" />
+
   <arg name="depth_enabled"           default="true" />           <!-- Enable or disable the depth camera -->
   <arg name="depth_mode"              default="NFOV_UNBINNED" />  <!-- Set the depth camera mode, which affects FOV, depth range, and camera resolution. See Azure Kinect documentation for full details. 
   Valid options: NFOV_UNBINNED, NFOV_2X2BINNED, WFOV_UNBINNED, WFOV_2X2BINNED, and PASSIVE_IR -->
