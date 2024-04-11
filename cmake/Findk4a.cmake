@@ -18,9 +18,9 @@ else()
 endif()
 
 # K4A versions have exactly 3 components: major.minor.rev
-if (NOT (FIND_VERSION_COUNT EQUAL 3))
-    message(FATAL_ERROR "Error: Azure Kinect SDK Version numbers contain exactly 3 components (major.minor.rev). Requested number of components: ${FIND_VERSION_COUNT}")
-endif()
+#if (NOT (FIND_VERSION_COUNT EQUAL 3))
+#    message(FATAL_ERROR "Error: Azure Kinect SDK Version numbers contain exactly 3 components (major.minor.rev). Requested number of components: ${FIND_VERSION_COUNT}")
+#endif()
 
 # First, check the ext/sdk folder for a depth engine. ALWAYS DO THIS FIRST.
 # We must not run "find_package(k4a)" until we are certain that we can use
