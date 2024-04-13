@@ -4,6 +4,8 @@ import open3d as o3d
 from PyQt5 import QtWidgets
 import ros_numpy
 import numpy as np
+# from flowbot3d.models.artflownet import ArtFlowNet
+# import torch
 
 rmatrix = [[-0.7343, -0.3504, 0.5814], 
            [-0.6787, 0.3962, -0.6184], 
@@ -36,6 +38,12 @@ def to_world(pose, pc):
     pc = np.hstack((pc, np.ones((pc.shape[0], 1))))
     pc = np.dot(pose, pc.T).T
     pc = pc[:, :3]
+    mask_x = np.logical_and(pc[:, 0] >= 0, pc[:, 0] <= 0.73)
+    mask_y = np.logical_and(pc[:, 1] >= -0.57, pc[:, 1] <= 0.75)
+    mask_z = np.logical_and(pc[:, 2] >= 0, pc[:, 2] <= 1)
+    combined_mask = np.logical_and(np.logical_and(mask_x, mask_y), mask_z)
+    pc = pc[combined_mask]
+    # np.save('pc_data_for_yishu/toilet_seat_open_60.npy', pc)
     return pc
 
 
@@ -58,8 +66,14 @@ class viewer(QtWidgets.QWidget):
         while (self.subscriber.pc is None):
             rospy.sleep(2)
         self.point_cloud = o3d.geometry.PointCloud()
+        # pc = np.load('pc_data_for_yishu/toilet_seat_closed.npy')
         self.point_cloud.points = o3d.utility.Vector3dVector(to_world(transformationMatrix, ros_numpy.point_cloud2.pointcloud2_to_xyz_array(self.subscriber.pc)))
-        self.point_cloud = vol.crop_point_cloud(self.point_cloud)
+        # self.point_cloud = vol.crop_point_cloud(self.point_cloud)
+        # ckpt_file = '/home/yimingf/catkin_ws/src/flowbot3d/pretrained/model.ckpt'
+        # model = ArtFlowNet.load_from_checkpoint(ckpt_file)
+        # flow = model.predict(torch.from_numpy(to_world(transformationMatrix, ros_numpy.point_cloud2.pointcloud2_to_xyz_array(self.subscriber.pc))), 0)
+        # fig = ArtFlowNet.plot_flow(flow)
+        # fig.show()
         self.vis.create_window()
         print('get points')
         self.vis.add_geometry(self.point_cloud)
@@ -75,11 +89,11 @@ class viewer(QtWidgets.QWidget):
         self.vis.update_renderer()
 
         while not rospy.is_shutdown():
-            self.point_cloud.points = o3d.utility.Vector3dVector(to_world(transformationMatrix, ros_numpy.point_cloud2.pointcloud2_to_xyz_array(self.subscriber.pc)))
-            vol = o3d.visualization.read_selection_polygon_volume("cropped.json")
-            cropped_pc = vol.crop_point_cloud(self.point_cloud)
-            self.point_cloud.points = cropped_pc.points
-            self.vis.update_geometry(self.point_cloud)
+        #     self.point_cloud.points = o3d.utility.Vector3dVector(to_world(transformationMatrix, ros_numpy.point_cloud2.pointcloud2_to_xyz_array(self.subscriber.pc)))
+        #     # vol = o3d.visualization.read_selection_polygon_volume("cropped.json")
+        #     # cropped_pc = vol.crop_point_cloud(self.point_cloud)
+        #     # self.point_cloud.points = cropped_pc.points
+        #     self.vis.update_geometry(self.point_cloud)
             self.vis.poll_events()
             self.vis.update_renderer()
 
