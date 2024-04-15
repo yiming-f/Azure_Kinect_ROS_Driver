@@ -4,8 +4,13 @@ import open3d as o3d
 from PyQt5 import QtWidgets
 import ros_numpy
 import numpy as np
-# from flowbot3d.models.artflownet import ArtFlowNet
+# import flowbot3d.models.flowbot3d
+# from flowbot3d.models.flowbot3d import ArtFlowNet
 # import torch
+
+# print("torch version: ", torch.__version__)
+
+# print("Is CUDA available? ", torch.cuda.is_available())
 
 rmatrix = [[-0.7343, -0.3504, 0.5814], 
            [-0.6787, 0.3962, -0.6184], 
@@ -40,10 +45,10 @@ def to_world(pose, pc):
     pc = pc[:, :3]
     mask_x = np.logical_and(pc[:, 0] >= 0, pc[:, 0] <= 0.73)
     mask_y = np.logical_and(pc[:, 1] >= -0.57, pc[:, 1] <= 0.75)
-    mask_z = np.logical_and(pc[:, 2] >= 0, pc[:, 2] <= 1)
+    mask_z = np.logical_and(pc[:, 2] >= 0.01, pc[:, 2] <= 1)
     combined_mask = np.logical_and(np.logical_and(mask_x, mask_y), mask_z)
     pc = pc[combined_mask]
-    # np.save('pc_data_for_yishu/toilet_seat_open_60.npy', pc)
+    # np.save('pc_data_for_yishu/fridge_B_open_100%.npy', pc)
     return pc
 
 
@@ -58,7 +63,7 @@ class viewer(QtWidgets.QWidget):
 
     def updater(self):
         print('starting viewer')
-        vol = o3d.visualization.read_selection_polygon_volume("cropped.json")
+        # vol = o3d.visualization.read_selection_polygon_volume("cropped.json")
 
         if not isinstance(self.vis, o3d.visualization.Visualizer):
             self.vis = o3d.visualization.Visualizer()
@@ -69,9 +74,12 @@ class viewer(QtWidgets.QWidget):
         # pc = np.load('pc_data_for_yishu/toilet_seat_closed.npy')
         self.point_cloud.points = o3d.utility.Vector3dVector(to_world(transformationMatrix, ros_numpy.point_cloud2.pointcloud2_to_xyz_array(self.subscriber.pc)))
         # self.point_cloud = vol.crop_point_cloud(self.point_cloud)
-        # ckpt_file = '/home/yimingf/catkin_ws/src/flowbot3d/pretrained/model.ckpt'
-        # model = ArtFlowNet.load_from_checkpoint(ckpt_file)
-        # flow = model.predict(torch.from_numpy(to_world(transformationMatrix, ros_numpy.point_cloud2.pointcloud2_to_xyz_array(self.subscriber.pc))), 0)
+        # ckpt_file = '/home/yimingf/catkin_ws/src/flowbot3d/pretrained/model_nomask_vpa.ckpt'
+        # print("Loading model")
+        # model = ArtFlowNet.load_from_checkpoint(ckpt_file).cuda()
+        # print("Model loaded")
+        # xyz = torch.from_numpy(to_world(transformationMatrix, ros_numpy.point_cloud2.pointcloud2_to_xyz_array(self.subscriber.pc)))
+        # flow = model.predict(xyz, torch.zeros(xyz.shape[0])).cuda()
         # fig = ArtFlowNet.plot_flow(flow)
         # fig.show()
         self.vis.create_window()
@@ -101,4 +109,4 @@ if __name__ == '__main__':
     print('Starting Azure Kinect listener')
     listener = azure_kinect_listener()
     updater = viewer(listener)
-    rospy.spin()
+    # rospy.spin()
