@@ -11,49 +11,49 @@ import numpy as np
 from flowbot3d.models.flowbot3d import ArtFlowNet, ArtFlowNetParams
 from scipy.spatial.transform import Rotation 
 from torch_geometric.nn import PointConv, fps, global_max_pool, knn_interpolate, radius
-from open_anything_diffusion.models.modules.dit_models import DGDiT, DiT
-from open_anything_diffusion.models.flow_diffuser_dit import FlowTrajectoryDiffuserInferenceModule_DiT
-from open_anything_diffusion.models.flow_diffuser_dgdit import FlowTrajectoryDiffuserInferenceModule_DGDiT
+# from open_anything_diffusion.models.modules.dit_models import DGDiT, DiT
+# from open_anything_diffusion.models.flow_diffuser_dit import FlowTrajectoryDiffuserInferenceModule_DiT
+# from open_anything_diffusion.models.flow_diffuser_dgdit import FlowTrajectoryDiffuserInferenceModule_DGDiT
 import copy
 
 print("Is CUDA available? ", torch.cuda.is_available())
 
-inference_module_class = {
-    "dit": FlowTrajectoryDiffuserInferenceModule_DiT,
-    "dgdit": FlowTrajectoryDiffuserInferenceModule_DGDiT,
-}
-networks = {
-    "dit": DiT(in_channels=6, depth=5, hidden_size=128, num_heads=4, learn_sigma=True),
-    "dgdit": DGDiT(in_channels=3, depth=5, hidden_size=128, patch_size=1, num_heads=4, n_points=1200),
-}
+# inference_module_class = {
+#     "dit": FlowTrajectoryDiffuserInferenceModule_DiT,
+#     "dgdit": FlowTrajectoryDiffuserInferenceModule_DGDiT,
+# }
+# networks = {
+#     "dit": DiT(in_channels=6, depth=5, hidden_size=128, num_heads=4, learn_sigma=True),
+#     "dgdit": DGDiT(in_channels=3, depth=5, hidden_size=128, patch_size=1, num_heads=4, n_points=1200),
+# }
 
-class InferenceConfig:
-    def __init__(self):
-        self.batch_size = 1
-        self.trajectory_len = 1
+# class InferenceConfig:
+#     def __init__(self):
+#         self.batch_size = 1
+#         self.trajectory_len = 1
 
-inference_config = InferenceConfig()
+# inference_config = InferenceConfig()
 
-class ModelConfig:
-    def __init__(self):
-        self.num_train_timesteps = 100
+# class ModelConfig:
+#     def __init__(self):
+#         self.num_train_timesteps = 100
 
-model_config = ModelConfig()
+# model_config = ModelConfig()
 
-import os
-ckpt_dir = './pretrained'
-train_type = 'fullset_half_half'   # door_half_half, fullset_half_half - what dataset the model is trained on 
-model_type = 'dit'   # dit, dgdit - model structure
-ckpt_path = os.path.join(ckpt_dir, f'{train_type}_{model_type}.ckpt')
+# import os
+# ckpt_dir = './pretrained'
+# train_type = 'fullset_half_half'   # door_half_half, fullset_half_half - what dataset the model is trained on 
+# model_type = 'dit'   # dit, dgdit - model structure
+# ckpt_path = os.path.join(ckpt_dir, f'{train_type}_{model_type}.ckpt')
 
-diff_model = inference_module_class[model_type](
-    networks[model_type].cuda(), inference_cfg=inference_config, model_cfg=model_config
-).cuda()
-diff_model.load_from_ckpt(ckpt_path)
+# diff_model = inference_module_class[model_type](
+#     networks[model_type].cuda(), inference_cfg=inference_config, model_cfg=model_config
+# ).cuda()
+# diff_model.load_from_ckpt(ckpt_path)
 
-ckpt_file = '/home/yimingf/catkin_ws/src/flowbot3d/pretrained/model_nomask_vpa.ckpt'
-params = ArtFlowNetParams(mask_input_channel=False)
-model = ArtFlowNet.load_from_checkpoint(ckpt_file, p=params).cuda()
+# ckpt_file = '/home/yimingf/catkin_ws/src/flowbot3d/pretrained/model_nomask_vpa.ckpt'
+# params = ArtFlowNetParams(mask_input_channel=False)
+# model = ArtFlowNet.load_from_checkpoint(ckpt_file, p=params).cuda()
 
 def transform_xyz_to_flowbot_frame(xyz):
     # Rotation matrix to rotate counter-clockwise 90 degrees around the z-axis
@@ -76,6 +76,8 @@ def get_goal_point_and_orientation(contact_point, flow_vector):
     print("flow vector dim: ", flow_vector.dim())
     print("contact point", contact_point)
     print("flow vector", flow_vector)
+    contact_point = contact_point.cuda()
+    flow_vector = flow_vector.cuda()
     goal_point = contact_point + 0.2 * flow_vector
     e_z_init = torch.tensor([0, 0, 1.0]).float().cuda()
     e_y = -flow_vector
@@ -160,13 +162,24 @@ def to_world(pose, pc):
     # pose = np.linalg.inv(pose)
     pc = np.hstack((pc, np.ones((pc.shape[0], 1))))
     pc = np.dot(pose, pc.T).T
+
+    # Rotate the point cloud 5 degrees around the y axis
+    rad = 2.5 * np.pi / 180
+    R = np.array([[np.cos(rad), 0, np.sin(rad)], [0, 1, 0], [-np.sin(rad), 0, np.cos(rad)]])
+    pc[:, :3] = np.dot(R, pc[:, :3].T).T
+    
+    # Rotate the point cloud 1 degree around the x axis
+    rad = 2 * np.pi / 180
+    R = np.array([[1, 0, 0], [0, np.cos(rad), -np.sin(rad)], [0, np.sin(rad), np.cos(rad)]])
+    pc[:, :3] = np.dot(R, pc[:, :3].T).T
+
     pc = pc[:, :3]
     mask_x = np.logical_and(pc[:, 0] >= 0, pc[:, 0] <= 0.73)
     mask_y = np.logical_and(pc[:, 1] >= -0.57, pc[:, 1] <= 0.75)
-    mask_z = np.logical_and(pc[:, 2] >= 0.01, pc[:, 2] <= 1)
+    mask_z = np.logical_and(pc[:, 2] >= 0.00, pc[:, 2] <= 1)
     combined_mask = np.logical_and(np.logical_and(mask_x, mask_y), mask_z)
     pc = pc[combined_mask]
-    # np.save('pc_data_for_yishu/fridge_B_open_100%.npy', pc)
+    np.save('pc_data_for_yishu/incorrect_toilet.npy', pc)
     return pc
 
 class viewer(QtWidgets.QWidget):
@@ -199,7 +212,7 @@ class viewer(QtWidgets.QWidget):
         print("numpy_xyz shape: ", numpy_xyz.shape)
         
         flow = model.predict(xyz, torch.zeros(xyz.shape[0]).float().cuda()).cuda()
-        diff_flow = diff_model.predict(numpy_xyz)
+        diff_flow = diff_model.predict(numpy_xyz)[:, 0, :]
 
         batch = tgd.Batch(pos=xyz, mask=torch.zeros(xyz.shape[0]).float().cuda(), id="stfu", flow=flow).cpu()
         figs = ArtFlowNet.make_plots(flow.cpu(), batch)
@@ -207,7 +220,7 @@ class viewer(QtWidgets.QWidget):
             fig.show()
         
         diff_batch = tgd.Batch(pos=xyz, mask=torch.zeros(xyz.shape[0]).float().cuda(), id="stfu", flow=diff_flow).cpu()
-        figs = ArtFlowNet.make_plots(flow.cpu(), batch)
+        figs = ArtFlowNet.make_plots(diff_flow.cpu(), diff_batch)
         for fig in figs.values():
             fig.show()
 
@@ -227,13 +240,13 @@ class viewer(QtWidgets.QWidget):
     
         #make goal_orientation a coordinate frame with origin at goal_point
 
-        goal_orientation_frame = (o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.2, origin=goal_point[0]))
+        goal_orientation_frame = (o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.1, origin=goal_point[0]))
         goal_orientation_frame_r = copy.deepcopy(goal_orientation_frame)
         rot = goal_orientation_frame.get_rotation_matrix_from_quaternion(goal_orientation)
         goal_orientation_frame_r.rotate(rot, center=goal_point[0])
         mesh_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.6, origin=[0, 0, 0])
 
-        diff_goal_orientation_frame = (o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.4, origin=diff_goal_point[0]))
+        diff_goal_orientation_frame = (o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.2, origin=diff_goal_point[0]))
         diff_goal_orientation_frame_r = copy.deepcopy(diff_goal_orientation_frame)
         diff_rot = diff_goal_orientation_frame.get_rotation_matrix_from_quaternion(diff_goal_orientation)
         diff_goal_orientation_frame_r.rotate(diff_rot, center=diff_goal_point[0])
